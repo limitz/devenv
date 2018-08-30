@@ -2,6 +2,7 @@
 # Copyright (C) 2006 by Johannes Zellner, <johannes@zellner.org>
 # modified by mac@calmar.ws to fit my output needs
 # modified by crncosta@carloscosta.org to fit my output needs
+# modified by limitz to fit my output needs
 
 # Original source: https://github.com/incitat/eran-dotfiles/blob/master/bin/terminalcolors.py
 
