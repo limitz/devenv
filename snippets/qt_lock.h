@@ -4,7 +4,7 @@
 #include <QMutex>
 
 #ifdef LOCK
-#warn "LOCK() previously defined
+#warn "LOCK() previously defined"
 #else
 
 struct _LOCK {
