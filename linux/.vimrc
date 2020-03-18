@@ -11,5 +11,8 @@ set ignorecase
 set smartcase
 set wildmenu
 set wildmode=list:longest,full
+nnoremap <F2> :set invpaste paste?<CR>
+set pastetoggle=<F2>
+set showmode
 colorscheme delek
 syntax on

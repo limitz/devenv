@@ -1,0 +1,5 @@
+alias ls='ls -lFh --color=auto'
+alias ll='ls -CF --color=auto'
+alias la='ls -lFHa --color=auto'
+alias pcd='pushd'
+alias pop='popd'
