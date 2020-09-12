@@ -1,2 +1,2 @@
 #!/bin/sh
-sudo jetson_clocks --restore
+sudo jetson_clocks --restore /home/limitz/projects/devenv/jetson/clocks.idle
