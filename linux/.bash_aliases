@@ -1,8 +1,12 @@
 alias ls='ls -lFh --color=auto'
 alias ll='ls -CF --color=auto'
 alias la='ls -lFHa --color=auto'
-alias pcd='pushd'
-alias pop='popd'
+alias search='apt-cache search'
+alias install='sudo apt install'
+alias make='make -j12'
+alias find='~/.find.sh'
+alias ecap='sudo /opt/EVT/eCapture/eCapture'
+alias vimba='/usr/local/vimba/bin/VimbaViewer'
 
 export CUDA_HOME=/usr/local/cuda
 export TRT_HOME=/usr/src/tensorrt
