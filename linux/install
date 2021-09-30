@@ -5,9 +5,8 @@ cp .dircolors ~
 cp .tmux.conf ~
 cp .vimrc ~
 cp .find.sh ~
-
+cp .adduser.sh ~
 git config --global user.email "eddy@autofilltech.com"
 git config --global user.name "E/S Pronk"
 
 . ~/.bashrc
-reset
