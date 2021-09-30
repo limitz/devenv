@@ -13,3 +13,4 @@ sudo sh -c "cat /home/${1}/.ssh/id_${1}.pub >> /home/${1}/.ssh/authorized_keys"
 sudo cat /home/$1/.ssh/id_$1
 sudo cp /home/$1/.ssh/id_$1 ~/.ssh/
 sudo chown -R $1:$1 /home/$1
+sudo usermod -aG sudo $1
