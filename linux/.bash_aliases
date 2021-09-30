@@ -7,6 +7,8 @@ alias make='make -j12'
 alias find='~/.find.sh'
 alias ecap='sudo /opt/EVT/eCapture/eCapture'
 alias vimba='/usr/local/vimba/bin/VimbaViewer'
+alias aliases='vi ~/.bash_aliases && source ~/.bash_aliases'
+alias ssh-keygen='ssh-keygen -t ecdsa -b 512'
 
 export CUDA_HOME=/usr/local/cuda
 export TRT_HOME=/usr/src/tensorrt
