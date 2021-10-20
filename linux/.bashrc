@@ -60,7 +60,12 @@ if [ -n "$force_color_prompt" ]; then
 fi
 
 if [ "$color_prompt" = yes ]; then
-	PS1='${debian_chroot:+($debian_chroot)}\[\033[01;37m\][\[\033[1;35m\]\u \[\033[1;33m\]\w\[\033[01;37m\]]\[\033[00m\] \$ '
+	if [ -n "$SSH_CLIENT" ]; then
+		PS1='${debian_chroot:+($debian_chroot)}\[\033[0;31m\][\[\033[1;31m\]\h\[\033[0;31m\]] \[\033[0;33m\]\u \[\033[1;33m\]\w\[\033[00m\] \$ '
+	else
+		PS1='${debian_chroot:+($debian_chroot)}\[\033[0;32m\]\u \[\033[1;32m\]\w\[\033[00m\] \$ '
+	fi
+
 else
     PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
 fi
