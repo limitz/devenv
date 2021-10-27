@@ -6,9 +6,10 @@ alias install='sudo apt install -y --no-install-recommends'
 alias make='make -j12'
 alias find='~/.find.sh'
 alias adduser='~/.adduser.sh'
-alias ecap='sudo /opt/EVT/eCapture/eCapture'
+alias evt='sudo /opt/EVT/eCapture/eCapture'
 alias vimba='/usr/local/vimba/bin/VimbaViewer'
 alias aliases='vi ~/.bash_aliases && source ~/.bash_aliases'
+alias sshconfig='vi ~/.ssh/config'
 
 export CUDA_HOME=/usr/local/cuda
 export TRT_HOME=/usr/src/tensorrt
