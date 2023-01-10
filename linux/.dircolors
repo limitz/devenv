@@ -125,13 +125,19 @@ EXEC 01;36  # Unix
 # Text that we can edit with a regular editor
 .md 38;5;33;01
 
+# PyTorch files
+.pt 38;5;62
+.pth 38;5;62;01
+
 # Source text
 .h 33
 .hpp 33
 .c 33
+.cu 33
 .cpp 33
-.sh 38;5;166
+.sh 39;01
 .py 38;5;166
+.ipynb 38;5;166;01
 .php 33
 .htm 33
 .html 33
@@ -147,6 +153,8 @@ EXEC 01;36  # Unix
 # Image
 .bmp 32
 .cgm 32
+.m12 32
+.hevc 32
 .dl 32
 .dvi 32
 .emf 32

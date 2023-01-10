@@ -3,13 +3,13 @@ alias ll='ls -CF --color=auto'
 alias la='ls -lFHa --color=auto'
 alias search='apt-cache search'
 alias install='sudo apt install -y --no-install-recommends'
-alias make='make -j12'
-alias find='~/.find.sh'
-alias adduser='~/.adduser.sh'
-alias evt='sudo /opt/EVT/eCapture/eCapture'
-alias vimba='/usr/local/vimba/bin/VimbaViewer'
+alias make='make -j16'
 alias aliases='vi ~/.bash_aliases && source ~/.bash_aliases'
 alias sshconfig='vi ~/.ssh/config'
+
+function findall(){
+	sudo find / -iname *$1* 2>/dev/null
+}
 
 export CUDA_HOME=/usr/local/cuda
 export TRT_HOME=/usr/src/tensorrt
