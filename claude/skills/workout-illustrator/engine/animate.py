@@ -13,13 +13,13 @@ import numpy as np
 from PIL import Image
 from mannequin import render_scene
 
-def tween_loop(build, path, N=36, fps=12, cam='side', W=680, H=493, props=(), pingpong=True, colors=128):
+def tween_loop(build, path, N=36, fps=12, cam='side', W=680, H=493, props=(), pingpong=True, colors=128, tint='continuous'):
     ext = [build(0.0), build(1.0)]
     frames = []
     for i in range(N):
         t = i / N
         s = 0.5 - 0.5 * np.cos(2 * np.pi * t) if pingpong else t
-        R = render_scene([build(s)], props, cam=cam, W=W, H=H, ghost_figures=ext)
+        R = render_scene([build(s)], props, cam=cam, W=W, H=H, ghost_figures=ext, tint=tint)
         im = Image.new('RGBA', R.img.size, (255, 255, 255, 255)); im.alpha_composite(R.img)
         frames.append(im.convert('P', palette=Image.ADAPTIVE, colors=colors))
     frames[0].save(path, save_all=True, append_images=frames[1:], duration=1000 // fps, loop=0, optimize=True)
@@ -58,7 +58,7 @@ def _smooth(t):
 
 EASE = {'smooth': _smooth, 'linear': lambda t: t, 'in': lambda t: t * t, 'out': lambda t: 1 - (1 - t) ** 2}
 
-def sequence(keyframes, build, path, fps=12, cam='side', W=680, H=493, props=(), mat=None, colors=128, hold_last=0.0):
+def sequence(keyframes, build, path, fps=12, cam='side', W=680, H=493, props=(), mat=None, colors=128, hold_last=0.0, tint='continuous'):
     """keyframes: list of (time_s, params_dict[, ease]) with ease in 'smooth' (default), 'linear',
     'in', 'out' for the segment starting at that key. Numeric params are interpolated (missing keys
     default to 0). build(params) -> Figure. Framing is fixed from all keyframe figures.
@@ -78,7 +78,7 @@ def sequence(keyframes, build, path, fps=12, cam='side', W=680, H=493, props=(),
         t0, t1 = times[j], times[j + 1]
         u = EASE[eases[j]]((t - t0) / (t1 - t0)) if t1 > t0 else 1.0
         p = {k: full[j][k] + (full[j + 1][k] - full[j][k]) * u for k in keys}
-        R = render_scene([build(p)], props, cam=cam, W=W, H=H, ghost_figures=fit_figs, mat=mat is None)
+        R = render_scene([build(p)], props, cam=cam, W=W, H=H, ghost_figures=fit_figs, mat=mat is None, tint=tint)
         im = Image.new('RGBA', R.img.size, (255, 255, 255, 255)); im.alpha_composite(R.img)
         frames.append(im.convert('P', palette=Image.ADAPTIVE, colors=colors))
     frames[0].save(path, save_all=True, append_images=frames[1:], duration=1000 // fps, loop=0, optimize=True)

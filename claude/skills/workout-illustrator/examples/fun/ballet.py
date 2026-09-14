@@ -9,7 +9,7 @@ from animate import sequence, param_pose
 
 TURNOUT = 55
 def build(p):
-    F = Figure(param_pose(p), root_pos=(p.get('x', 0.0), 0.96, p.get('z', 0.0)), near='L')  # fixed shading per side
+    F = Figure(param_pose(p), root_pos=(p.get('x', 0.0), 0.96, p.get('z', 0.0)))   # limbs tinted by depth (continuous)
     F.ground()
     return F
 
@@ -29,9 +29,9 @@ K.append((0.0, {**fifth, **BRAS_BAS}))
 K.append((0.6, {**fifth, **BRAS_BAS}))
 K.append((1.2, {**fifth, 'kneeL': 48, 'kneeR': 48, 'tflexL': 20, 'tflexR': 28, **FIRST}))       # demi-plie, arms first
 # pas de bourree dessous: back (right, demi-pointe) - side (left, demi-pointe) - front (right, plie)
-K.append((1.6, {**legs(tflexR=-16, tabdR=6, footR=48, tflexL=2, tabdL=-2, footL=48), 'x': -0.06, **FIRST}))
-K.append((1.95, {**legs(tflexL=0, tabdL=28, footL=48, tflexR=-4, tabdR=8, footR=48), 'x': -0.02, 'z': 0.22, **SECOND}))
-K.append((2.3, {**legs(tflexR=22, tabdR=-16, kneeR=42, tflexL=14, tabdL=2, kneeL=42), 'z': 0.42, **FIRST}))
+K.append((1.6, {**legs(tflexR=-16, tabdR=2, footR=48, tflexL=2, tabdL=-2, footL=48), 'x': -0.06, **FIRST}))
+K.append((1.95, {**legs(tflexL=0, tabdL=24, footL=48, tflexR=-4, tabdR=2, footR=48), 'x': -0.02, 'z': 0.22, **SECOND}))
+K.append((2.3, {**legs(tflexR=22, tabdR=-7, kneeR=42, tflexL=14, tabdL=2, kneeL=42), 'z': 0.42, **FIRST}))
 # preparation in fourth: right foot back, left front in plie; right arm first, left arm second
 prep = {**legs(tflexR=-26, tabdR=-4, tflexL=24, kneeL=46, tabdL=-2), 'z': 0.42,
         **arms(FIRST, uabdL=82, uflexL=12, elbowL=18)}

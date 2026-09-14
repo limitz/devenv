@@ -279,8 +279,11 @@ class Render:
     pass
 
 def render_scene(figures, props=(), cam='side', W=1020, H=740, ss=2, margin=0.07,
-                 mat=True, mat_pad=0.16, fit_pts=None, ghost_figures=(), scale_lock=None):
-    """Returns Render with .rgba (H,W,4 float), .project(p)->(x,y) px, .mask_ghost etc."""
+                 mat=True, mat_pad=0.16, fit_pts=None, ghost_figures=(), scale_lock=None, tint='binary'):
+    """Returns Render with .img (PIL RGBA), .project(p)->(x,y) px, .silhouette_of(figs).
+    tint: 'binary' = near limb solid / far limb pale, decided per figure from hip depth (or Figure.near);
+          'continuous' = each limb tinted by its own depth relative to the pelvis (use for animation,
+          so tints cross-fade as the figure turns and the nearer limb is always the darker one)."""
     az, el = CAMS[cam] if isinstance(cam, str) else cam
     V, right, up = camera(az, el)
     d = -V
@@ -289,20 +292,30 @@ def render_scene(figures, props=(), cam='side', W=1020, H=740, ss=2, margin=0.07
     gid = 0
     fit = []
     nearside = {}
+    LIMB_JOINTS = {'legL': ('hipL', 'kneeL', 'ankleL'), 'legR': ('hipR', 'kneeR', 'ankleR'),
+                   'armL': ('shoulderL', 'elbowL', 'wristL'), 'armR': ('shoulderR', 'elbowR', 'wristR')}
     for fi, F in enumerate(figures):
-        # near/far: compare depth of hips
         zl = F.J('hipL') @ V; zr = F.J('hipR') @ V
         near = F.near or ('L' if zl >= zr else 'R')
+        d_root = F.J('pelvis') @ V
+        limb_t = {}
+        for g, js in LIMB_JOINTS.items():
+            if tint == 'continuous' and not F.near:
+                dd = np.mean([F.J(j) @ V for j in js]) - d_root
+                limb_t[g] = float(np.clip(0.5 + dd / 0.45, 0, 1))
+            else:
+                limb_t[g] = 1.0 if g[-1] == near else 0.0
         for pr in F.prims:
             g = pr[-1]
             if g in ('torso', 'head'):
-                ck = g
+                rgb, tk = COL[g], 1.0
             else:
-                ck = 'near' if g[-1] == near else 'far'
+                tk = limb_t[g]
+                rgb = COL['far'] + (COL['near'] - COL['far']) * tk
             if F.color_override:
-                ck = F.color_override
+                rgb, tk = COL[F.color_override], 1.0
             gname = f'f{fi}:{g}'
-            prims.append((pr, ck, gname))
+            prims.append((pr, rgb, tk, gname))
             if pr[0] == 'cap':
                 fit += [pr[1] + right * pr[3], pr[1] - right * pr[3], pr[1] + up * pr[3], pr[1] - up * pr[3],
                         pr[2] + right * pr[3], pr[2] - right * pr[3], pr[2] + up * pr[3], pr[2] - up * pr[3]]
@@ -312,7 +325,7 @@ def render_scene(figures, props=(), cam='side', W=1020, H=740, ss=2, margin=0.07
         kind = pr[0]
         if kind == 'box':
             _, mn, mx, ck, dofit, g = pr
-            prims.append((('box', mn, mx, g), ck, 'p:' + g))
+            prims.append((('box', mn, mx, g), COL[ck], 1.0, 'p:' + g))
             if dofit:
                 for cx in (mn[0], mx[0]):
                     for cy in (mn[1], mx[1]):
@@ -320,12 +333,12 @@ def render_scene(figures, props=(), cam='side', W=1020, H=740, ss=2, margin=0.07
                             fit.append(np.array([cx, cy, cz]))
         elif kind == 'sph':
             _, c, r, ck, dofit, g = pr
-            prims.append((('sph', c, r, g), ck, 'p:' + g))
+            prims.append((('sph', c, r, g), COL[ck], 1.0, 'p:' + g))
             if dofit:
                 fit += [c + right * r, c - right * r, c + up * r, c - up * r]
         elif kind == 'cap':
             _, a, b, r, ck, dofit, g = pr
-            prims.append((('cap', a, b, r, g), ck, 'p:' + g))
+            prims.append((('cap', a, b, r, g), COL[ck], 1.0, 'p:' + g))
             if dofit:
                 fit += [a + right * r, a - right * r, a + up * r, a - up * r,
                         b + right * r, b - right * r, b + up * r, b - up * r]
@@ -356,7 +369,7 @@ def render_scene(figures, props=(), cam='side', W=1020, H=740, ss=2, margin=0.07
         allp = np.array(allp)
         mn = np.array([allp[:, 0].min() - mat_pad, -0.012, allp[:, 2].min() - mat_pad])
         mx = np.array([allp[:, 0].max() + mat_pad, 0.0, allp[:, 2].max() + mat_pad])
-        prims.append((('box', mn, mx, 'mat'), 'mat', 'p:mat'))
+        prims.append((('box', mn, mx, 'mat'), COL['mat'], 1.0, 'p:mat'))
         for cx in (mn[0], mx[0]):
             for cz in (mn[2], mx[2]):
                 fit = np.vstack([fit, [[cx, 0.0, cz]]])
@@ -384,7 +397,7 @@ def render_scene(figures, props=(), cam='side', W=1020, H=740, ss=2, margin=0.07
         y0 = int(np.floor(Hs / 2 - (vv.max() + r - vc) * sc)) - 1
         y1 = int(np.ceil(Hs / 2 - (vv.min() - r - vc) * sc)) + 1
         return max(x0, 0), min(x1, Ws), max(y0, 0), min(y1, Hs)
-    for k, (pr, ck, gname) in enumerate(prims):
+    for k, (pr, rgb, tk, gname) in enumerate(prims):
         kind = pr[0]
         if kind == 'box':
             _, mn, mx, g = pr
@@ -395,7 +408,7 @@ def render_scene(figures, props=(), cam='side', W=1020, H=740, ss=2, margin=0.07
         else:
             x0, x1, y0, y1 = px_bbox(np.array([pr[1], pr[2]]), pr[3])
         if x1 <= x0 or y1 <= y0:
-            meta.append((ck, gname)); continue
+            meta.append((rgb, tk, gname)); continue
         o = origin[y0:y1, x0:x1].reshape(-1, 3)
         if kind == 'box':
             t, ax = hit_box(o, d, mn, mx)
@@ -422,26 +435,26 @@ def render_scene(figures, props=(), cam='side', W=1020, H=740, ss=2, margin=0.07
             idmap[y0:y1, x0:x1] = sub_id.reshape(y1 - y0, x1 - x0)
             sub_n = normal[y0:y1, x0:x1].reshape(-1, 3); sub_n[upd] = n
             normal[y0:y1, x0:x1] = sub_n.reshape(y1 - y0, x1 - x0, 3)
-        meta.append((ck, gname))
+        meta.append((rgb, tk, gname))
     # shading
     L = right * 0.35 + up * 0.75 + V * 0.55; L /= np.linalg.norm(L)
     ndl = normal @ L
     rgb = np.zeros((Hs, Ws, 3)); alpha = np.zeros((Hs, Ws))
     hit = idmap >= 0
-    colkeys = np.array([m[0] for m in meta] + ['mat'])
-    groups = [m[1] for m in meta] + ['p:mat']
+    groups = [m[2] for m in meta] + ['p:mat']
+    tints = np.array([m[1] for m in meta] + [1.0])
     base = np.zeros((Hs, Ws, 3))
-    for k, (ck, gname) in enumerate(meta):
+    for k, (rgb, tk, gname) in enumerate(meta):
         m = idmap == k
         if not m.any():
             continue
-        base[m] = COL[ck]
+        base[m] = rgb
     # contact shadow on mat and box tops: darken points under low body parts
     shade = np.where(ndl > 0.2, 1.0, 0.80)
     shade = np.where(ndl > 0.72, 1.06, shade)
     # mat/box pixels: flat, but with contact shadow
     isprop = np.zeros((Hs, Ws), bool)
-    for k, (ck, gname) in enumerate(meta):
+    for k, (rgb, tk, gname) in enumerate(meta):
         if gname.startswith('p:'):
             isprop |= idmap == k
     shade = np.where(isprop, np.where(ndl > 0.5, 1.0, 0.88), shade)
@@ -472,32 +485,28 @@ def render_scene(figures, props=(), cam='side', W=1020, H=740, ss=2, margin=0.07
     shade = shade * (1 - 0.16 * shadow)
     rgb = base * shade[..., None]
     alpha[hit] = 1.0
-    # outlines
-    far_ids = np.array([ck == 'far' for ck, g in meta] + [False])
+    # outlines: colour follows the tint of the nearer side (ink for solid, muted for pale limbs)
     edge = np.zeros((Hs, Ws), bool)
-    edge_far = np.zeros((Hs, Ws), bool)
+    edge_t = np.zeros((Hs, Ws))
     dep = np.where(np.isinf(depth), 1e3, depth)
+    garr = np.array(groups)
     for dy, dx in ((0, 1), (1, 0)):
         a_id = idmap[:Hs - dy, :Ws - dx]; b_id = idmap[dy:, dx:]
         a_d = dep[:Hs - dy, :Ws - dx]; b_d = dep[dy:, dx:]
-        ga = np.array(groups)[a_id]; gb = np.array(groups)[b_id]
-        diff = (ga != gb) | (np.abs(a_d - b_d) > 0.03)
-        e = np.zeros((Hs, Ws), bool)
-        e[:Hs - dy, :Ws - dx] |= diff
-        e[dy:, dx:] |= diff
+        diff = (garr[a_id] != garr[b_id]) | (np.abs(a_d - b_d) > 0.03)
+        nearer = np.where(a_d <= b_d, a_id, b_id)
+        tn = np.where(diff, tints[nearer], 0.0)
+        e = np.zeros((Hs, Ws), bool); e[:Hs - dy, :Ws - dx] |= diff; e[dy:, dx:] |= diff
         edge |= e
-        # far-limb outline: both sides are far or background
-        fa = far_ids[a_id] | (a_id < 0); fb = far_ids[b_id] | (b_id < 0)
-        farboth = diff & fa & fb & ~((a_id < 0) & (b_id < 0))
-        ef = np.zeros((Hs, Ws), bool)
-        ef[:Hs - dy, :Ws - dx] |= farboth; ef[dy:, dx:] |= farboth
-        edge_far |= ef
+        et = np.zeros((Hs, Ws)); et[:Hs - dy, :Ws - dx] = tn; et[dy:, dx:] = np.maximum(et[dy:, dx:], tn)
+        edge_t = np.maximum(edge_t, et)
     k = int(round(2.5 * ss))
     yy, xx = np.mgrid[-k:k + 1, -k:k + 1]
     disc = (xx ** 2 + yy ** 2) <= k * k
     edge_d = binary_dilation(edge, structure=disc)
-    edge_far_d = binary_dilation(edge_far, structure=disc) & ~binary_dilation(edge & ~edge_far, structure=disc)
-    line_col = np.where(edge_far_d[..., None], MUTED, INK)
+    from scipy.ndimage import grey_dilation
+    edge_td = grey_dilation(edge_t, footprint=disc)
+    line_col = MUTED + (INK - MUTED) * edge_td[..., None]
     rgb = np.where(edge_d[..., None], line_col, rgb)
     alpha = np.where(edge_d, 1.0, alpha)
     rgba = np.concatenate([rgb, alpha[..., None]], axis=-1)

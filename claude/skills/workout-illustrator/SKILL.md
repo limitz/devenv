@@ -62,6 +62,9 @@ Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftopp
   plus a `fit_pts` entry so the frame stops just above the head.
 - Ghost = start position, rendered from the same root so hands/knees stay put; only the moving
   parts differ.
+- Limb shading: stills use `tint='binary'` (near limb solid, far limb pale, decided once per figure).
+  Animations use `tint='continuous'` (each limb tinted by its own depth), otherwise a pale limb that
+  swings to the front looks like the back leg jumped forward. Never pin `near=` on a turning figure.
 - When a solve (bisection) is needed, check the monotonic direction first — a wrong sign silently
   puts a knee on the floor.
 - Multi-figure tiles (two mini scenes side by side) are fine for paired drills.
