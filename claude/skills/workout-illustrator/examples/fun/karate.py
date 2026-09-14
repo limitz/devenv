@@ -6,20 +6,7 @@ import numpy as np
 from mannequin import *
 from animate import sequence
 
-# --- parametric pose: every keyframe is a dict of these numbers (missing = 0) -------------------
-def pose_from(p):
-    g = lambda k: p.get(k, 0.0)
-    sgn = {'L': 1, 'R': -1}
-    pose = {'root': [('y', g('yaw')), ('z', g('pitch'))],
-            'lumbar': [('z', -g('lumbar'))], 'thorax': [('z', -g('thorax'))], 'neck': [('z', -g('neck'))]}
-    for s in 'LR':
-        pose['uarm' + s] = [('x', -sgn[s] * g('uabd' + s)), ('z', g('uflex' + s))]
-        pose['farm' + s] = [('z', g('elbow' + s))]
-        pose['hand' + s] = [('z', g('hand' + s))]
-        pose['thigh' + s] = [('x', -sgn[s] * g('tabd' + s)), ('z', g('tflex' + s))]
-        pose['shin' + s] = [('z', -g('knee' + s))]
-        pose['foot' + s] = [('z', -g('foot' + s))]
-    return pose
+from animate import param_pose as pose_from
 
 def build(p):
     F = Figure(pose_from(p), root_pos=(p.get('x', 0.0), 0.96, 0.0))

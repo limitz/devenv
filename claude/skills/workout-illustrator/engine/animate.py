@@ -32,17 +32,42 @@ def tween_loop(build, path, N=36, fps=12, cam='side', W=680, H=493, props=(), pi
                 break
     return path
 
+# ---------------------------------------------------------------- parametric pose template
+def param_pose(p):
+    """Pose dict from a flat dict of numbers (missing keys = 0). Keys:
+    yaw pitch roll (root) · lumbar thorax neck neckyaw (forward bend deg, head turn) ·
+    per side X in L/R: uflexX uabdX urotX elbowX handX (arm) · tflexX tabdX trotX kneeX footX (leg;
+    trotX = external rotation, footX = plantarflexion, negative = toes up)."""
+    g = lambda k: p.get(k, 0.0)
+    sgn = {'L': 1, 'R': -1}
+    pose = {'root': [('y', g('yaw')), ('x', g('roll')), ('z', g('pitch'))],
+            'lumbar': [('z', -g('lumbar'))], 'thorax': [('z', -g('thorax'))],
+            'neck': [('y', g('neckyaw')), ('z', -g('neck'))]}
+    for s_ in 'LR':
+        pose['uarm' + s_] = [('y', -sgn[s_] * g('urot' + s_)), ('x', -sgn[s_] * g('uabd' + s_)), ('z', g('uflex' + s_))]
+        pose['farm' + s_] = [('z', g('elbow' + s_))]
+        pose['hand' + s_] = [('z', g('hand' + s_))]
+        pose['thigh' + s_] = [('y', -sgn[s_] * g('trot' + s_)), ('x', -sgn[s_] * g('tabd' + s_)), ('z', g('tflex' + s_))]
+        pose['shin' + s_] = [('z', -g('knee' + s_))]
+        pose['foot' + s_] = [('z', -g('foot' + s_))]
+    return pose
+
 # ---------------------------------------------------------------- keyframe sequences
 def _smooth(t):
     return t * t * (3 - 2 * t)
 
+EASE = {'smooth': _smooth, 'linear': lambda t: t, 'in': lambda t: t * t, 'out': lambda t: 1 - (1 - t) ** 2}
+
 def sequence(keyframes, build, path, fps=12, cam='side', W=680, H=493, props=(), mat=None, colors=128, hold_last=0.0):
-    """keyframes: list of (time_s, params_dict). Numeric params are interpolated with smoothstep
-    between neighbouring keyframes (missing keys default to 0). build(params) -> Figure.
-    Framing is fixed from all keyframe figures. Writes a GIF (+ MP4 when ffmpeg can encode)."""
-    keys = sorted(set(k for _, p in keyframes for k in p))
-    times = [t for t, _ in keyframes]
-    full = [{k: p.get(k, 0.0) for k in keys} for _, p in keyframes]
+    """keyframes: list of (time_s, params_dict[, ease]) with ease in 'smooth' (default), 'linear',
+    'in', 'out' for the segment starting at that key. Numeric params are interpolated (missing keys
+    default to 0). build(params) -> Figure. Framing is fixed from all keyframe figures.
+    Writes a GIF (+ MP4 when ffmpeg can encode)."""
+    keyframes = [(kf[0], kf[1], kf[2] if len(kf) > 2 else 'smooth') for kf in keyframes]
+    keys = sorted(set(k for _, p, _ in keyframes for k in p))
+    times = [t for t, _, _ in keyframes]
+    eases = [e for _, _, e in keyframes]
+    full = [{k: p.get(k, 0.0) for k in keys} for _, p, _ in keyframes]
     fit_figs = [build(p) for p in full]
     T = times[-1] + hold_last
     n = int(round(T * fps)) + 1
@@ -51,7 +76,7 @@ def sequence(keyframes, build, path, fps=12, cam='side', W=680, H=493, props=(),
         t = min(i / fps, times[-1])
         j = max(0, min(len(times) - 2, np.searchsorted(times, t, side='right') - 1))
         t0, t1 = times[j], times[j + 1]
-        u = _smooth((t - t0) / (t1 - t0)) if t1 > t0 else 1.0
+        u = EASE[eases[j]]((t - t0) / (t1 - t0)) if t1 > t0 else 1.0
         p = {k: full[j][k] + (full[j + 1][k] - full[j][k]) * u for k in keys}
         R = render_scene([build(p)], props, cam=cam, W=W, H=H, ghost_figures=fit_figs, mat=mat is None)
         im = Image.new('RGBA', R.img.size, (255, 255, 255, 255)); im.alpha_composite(R.img)

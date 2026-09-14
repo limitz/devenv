@@ -42,8 +42,12 @@ Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftopp
    with IK inside `build`, so only the moving segments move. ~1.5 s per frame at 680×493.
    For multi-step choreography use `animate.sequence(keyframes, build, path)`: keyframes are
    `(time_s, params)` dicts of plain numbers, interpolated with smoothstep and fed to your
-   `build(params)`; see `examples/fun/karate.py` (punches, flying kick, bow) for a parametric
-   pose template and how airborne frames set the root height explicitly.
+   `build(params)`; `animate.param_pose(params)` turns a flat dict of joint numbers into a pose.
+   Keyframes take an optional ease ('smooth', 'linear', 'in', 'out') for the segment they start.
+   See `examples/fun/karate.py` (punches, flying kick, bow; airborne frames set the root height
+   explicitly) and `examples/fun/ballet.py` (fifth, pas de bourrée, pirouette with linear spin,
+   révérence; turnout via `trotX`, demi-pointe via `footX`, fixed `near='L'` so shading does not
+   flip while turning).
 
 ## Rules of thumb that cost time to learn
 
