@@ -43,7 +43,14 @@ Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftopp
    For multi-step choreography use `animate.sequence(keyframes, build, path)`: keyframes are
    `(time_s, params)` dicts of plain numbers, interpolated with smoothstep and fed to your
    `build(params)`; `animate.param_pose(params)` turns a flat dict of joint numbers into a pose.
-   Keyframes take an optional ease ('smooth', 'linear', 'in', 'out') for the segment they start.
+   By default every param follows a monotone cubic spline through all keyframes (motion flows through a
+   keyframe instead of stopping at it; holds stay flat), and the root height is a smooth envelope of the
+   per-frame grounded height, so a limb dipping below the floor between keyframes lifts the body gently
+   instead of bouncing it. A keyframe may carry `label`: a caption of the current move drawn at the top.
+   Before a long render, trace the grounded root height per frame (see the spike check in the lyrical
+   demo's history): a spike above ~15 cm means a limb sweeps through the floor and the transition needs
+   an intermediate keyframe (straighten a knee before rotating the leg; keep `flex=90` while sweeping a
+   straight leg across the floor with `abd`).
    See `examples/fun/karate.py` (punches, flying kick, bow; airborne frames set the root height
    explicitly) and `examples/fun/ballet.py` (fifth, pas de bourrée, pirouette with linear spin,
    révérence; turnout via `trotX`, demi-pointe via `footX`) and `examples/fun/lyrical.py` (hip sways,

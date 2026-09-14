@@ -10,10 +10,7 @@ from animate import param_pose as pose_from
 
 def build(p):
     F = Figure(pose_from(p), root_pos=(p.get('x', 0.0), 0.96, 0.0))
-    if p.get('air', 0.0) < 0.5:
-        F.ground()                                     # feet on the floor
-    else:
-        F.root_pos[1] = p['rooty']; F.fk()             # in the air: explicit root height
+    F.ground()                                         # sequence() lifts airborne frames via their 'rooty'
     return F
 
 def rooty(p):
@@ -42,9 +39,10 @@ LAND = dict(GUARD, x=0.55, tflexL=30, kneeL=55, tflexR=30, kneeR=55, lumbar=16, 
 TALL = dict(x=0.55, uabdL=6, uabdR=6, elbowL=6, elbowR=6, footL=0, footR=0)
 BOW = dict(TALL, lumbar=38, thorax=12, neck=6, uflexL=4, uflexR=4)
 
-KEYS = [(0.0, GUARD), (0.5, GUARD), (0.7, punch('L')), (0.9, punch('L')), (1.1, punch('R')), (1.3, punch('R')),
-        (1.65, CROUCH), (1.95, flight(0.18, 0.30, 70)), (2.15, flight(0.32, 0.42, 100)), (2.32, flight(0.45, 0.30, 92)),
-        (2.55, LAND), (3.05, TALL), (3.5, BOW), (4.2, BOW), (4.7, TALL)]
+KEYS = [(0.0, {**GUARD, 'label': 'guard'}), (0.5, GUARD), (0.7, {**punch('L'), 'label': 'left punch'}), (0.9, punch('L')),
+        (1.1, {**punch('R'), 'label': 'right punch'}), (1.3, punch('R')),
+        (1.65, {**CROUCH, 'label': 'flying front kick'}), (1.95, flight(0.18, 0.30, 70)), (2.15, flight(0.32, 0.42, 100)), (2.32, flight(0.45, 0.30, 92)),
+        (2.55, {**LAND, 'label': 'landing'}), (3.05, {**TALL, 'label': 'bow'}), (3.5, BOW), (4.2, BOW), (4.7, TALL)]
 
 out = sys.argv[1] if len(sys.argv) > 1 else 'karate.gif'
 mat = box((-0.75, -0.012, -0.55), (1.35, 0.0, 0.55), color='mat', fit=False, group='mat')

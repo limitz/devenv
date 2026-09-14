@@ -10,7 +10,7 @@ from animate import sequence, param_pose
 
 def build(p):
     F = Figure(param_pose(p), root_pos=(p.get('x', 0.0), 0.96, p.get('z', 0.0)))
-    F.ground()
+    F.ground()                     # sequence() smooths the height afterwards
     return F
 
 def arm(side, flex=0, abd=0, elbow=0, rot=0):
@@ -32,30 +32,42 @@ spiral = {**leg('L', flex=40, abd=18, knee=80, rot=35), **leg('R', flex=40, abd=
 # --- kneeling lunge: right knee down (shin flat behind), left foot forward flat ------------------
 kneel = {**leg('R', flex=0, abd=6, knee=92, foot=40), **leg('L', flex=88, abd=8, knee=90), 'lumbar': 6,
          **arm('L', flex=60, abd=10, elbow=40), **arm('R', flex=-10, abd=80, elbow=10), 'neckside': 6}
-# --- side-sit (legs folded to the dancer's left), right hand on the floor -------------------------
-sidesit = {**leg('R', flex=90, knee=90, rot=90, foot=25), **leg('L', abd=90, knee=90, foot=25), 'lumbarside': 6,
-           **arm('R', flex=-24, abd=48, elbow=12), **arm('L', flex=150, abd=22, elbow=26), 'neckside': -8}
-# --- floor developpe: front (right) leg extends straight along the floor ---------------------------
-floordev = {**leg('R', flex=92, knee=0, rot=30, foot=45), **leg('L', abd=90, knee=90, foot=25), 'lumbar': -12,
+# --- side-sit to the dancer's right: right leg is the back leg (thigh out to the side, shin back),
+#     left leg the front leg (thigh forward, shin across); left hand on the floor, right arm up ----------
+sidesit = {**leg('R', abd=90, knee=90, foot=25), **leg('L', flex=90, knee=90, rot=90, foot=25), 'lumbarside': -6,
+           **arm('L', flex=-24, abd=48, elbow=12), **arm('R', flex=150, abd=22, elbow=26), 'neckside': 8}
+# --- legs straighten in the floor plane: knees first (shins sweep flat), then the straight legs turn --
+unfold0 = {**leg('R', abd=90, knee=0, foot=45), **leg('L', flex=90, knee=0, rot=90, foot=45), 'lumbar': -4,
+           **arm('L', flex=-30, abd=40, elbow=10), **arm('R', flex=130, abd=32, elbow=22)}
+unfold = {**leg('R', flex=90, abd=90, knee=0, foot=45), **leg('L', flex=90, knee=0, rot=90, foot=45), 'lumbar': -4,   # flex 90 + abd sweeps a straight leg in the floor plane
+          **arm('L', flex=-30, abd=40, elbow=10), **arm('R', flex=120, abd=40, elbow=20)}
+# --- floor developpe: seated V, right leg sweeps forward along the floor, feet pointed ---------------
+floordev = {**leg('R', flex=90, abd=26, knee=0, foot=45), **leg('L', flex=90, abd=8, knee=0, rot=30, foot=45), 'lumbar': -12,
             **arm('R', flex=-40, abd=30, elbow=10), **arm('L', flex=-40, abd=30, elbow=10)}
 # --- lie back, right leg to the ceiling, left knee bent foot flat --------------------------------
-lieback = {'pitch': 90, **leg('R', flex=96, foot=45), **leg('L', flex=62, knee=122, foot=-6),
+lieback = {'pitch': 90, **leg('R', flex=96, foot=45), **leg('L', flex=2, abd=8, knee=0, foot=45),
            **arm('R', flex=165, abd=18, elbow=8), **arm('L', flex=165, abd=18, elbow=8), 'neck': -6}
-sweep = {'pitch': 90, **leg('R', flex=60, abd=72, foot=45), **leg('L', flex=62, knee=122, foot=-6),
+sweep = {'pitch': 90, **leg('R', flex=60, abd=72, foot=45), **leg('L', flex=2, abd=8, knee=0, foot=45),
          **arm('R', flex=20, abd=90, elbow=6), **arm('L', flex=20, abd=90, elbow=6), 'lumbarside': 6}
 # --- roll onto the left side, legs folded, top arm reaching -------------------------------------
-sidelie = {'pitch': 90, 'yaw': 95, **leg('R', flex=70, knee=95, foot=35), **leg('L', flex=50, knee=100, foot=35),
+sidelie = {'pitch': 90, 'yaw': -95, **leg('R', flex=70, knee=95, foot=35), **leg('L', flex=55, abd=6, knee=105, foot=35),
            **arm('L', flex=100, abd=10, elbow=90), **arm('R', flex=120, abd=-10, elbow=10), 'lumbar': 10, 'neck': 8}
 # --- push up to the side-sit, then kneel, then rise ------------------------------------------------
-pushup = {'pitch': 30, 'yaw': 30, **leg('R', flex=90, knee=90, rot=80, foot=25), **leg('L', abd=80, knee=95, foot=25),
-          **arm('L', flex=-20, abd=60, elbow=10), **arm('R', flex=110, abd=20, elbow=20), 'lumbar': 14, 'lumbartwist': -10}
-rise = {**leg('L', flex=28, abd=10, knee=40), **leg('R', flex=8, abd=10, knee=14, foot=20), 'lumbar': 8,
+pushup = {'pitch': 30, 'yaw': -30, **leg('R', abd=80, knee=95, foot=25), **leg('L', flex=90, knee=90, rot=80, foot=25),
+          **arm('L', flex=-20, abd=60, elbow=10), **arm('R', flex=110, abd=20, elbow=20), 'lumbar': 14, 'lumbartwist': 10}
+stepup = {**leg('L', flex=62, abd=10, knee=72), **leg('R', flex=-12, abd=8, knee=28, foot=12), 'lumbar': 14, 'x': 0.1,
+          **arm('L', flex=80, abd=20, elbow=30), **arm('R', flex=40, abd=60, elbow=20)}
+rise = {**leg('L', flex=28, abd=10, knee=40), **leg('R', flex=8, abd=10, knee=14, foot=0), 'lumbar': 8,
         **arm('L', flex=120, abd=30, elbow=25), **arm('R', flex=120, abd=30, elbow=25), 'x': 0.2}
 final = {**swayL, 'x': 0.2, **arm('L', flex=160, abd=22, elbow=24), **arm('R', flex=20, abd=45, elbow=30), 'neckside': 10}
 
-K = [(0.0, swayL), (0.9, swayR), (1.7, wave1), (2.1, wave2), (2.5, wave3), (3.1, spiral), (3.8, kneel),
-     (4.6, sidesit), (5.4, floordev), (6.2, lieback), (6.9, sweep), (7.7, sidelie), (8.5, pushup), (9.1, sidesit),
-     (9.8, kneel), (10.4, rise), (11.0, final), (11.5, final)]
+L = lambda p, text: {**p, 'label': text}
+K = [(0.0, L(swayL, 'hip sway, arm sweep')), (0.9, swayR), (1.7, L(wave1, 'body wave')), (2.1, wave2), (2.5, wave3),
+     (3.1, L(spiral, 'spiral down')), (3.8, L(kneel, 'kneeling lunge')), (4.6, L(sidesit, 'side-sit')),
+     (4.95, L(unfold0, 'legs unfold')), (5.2, unfold), (5.7, L(floordev, 'floor developpe')), (6.5, L(lieback, 'lie back, leg up')),
+     (7.2, L(sweep, 'leg sweep')), (8.0, L(sidelie, 'roll to the side')), (8.8, L(pushup, 'push up')),
+     (9.4, L(sidesit, 'side-sit')), (10.1, L(kneel, 'kneeling lunge')), (10.5, L(stepup, 'rise')), (10.9, rise),
+     (11.5, L(final, 'final pose')), (12.0, final)]
 
 out = sys.argv[1] if len(sys.argv) > 1 else 'lyrical.gif'
 mat = box((-0.95, -0.012, -0.85), (1.25, 0.0, 0.85), color='mat', fit=False, group='mat')
