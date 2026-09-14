@@ -40,6 +40,10 @@ Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftopp
    (cosine ping-pong loop, fixed framing) into a GIF plus MP4; see
    `examples/hip-groin-flexibility/animate_catcow.py`. Keep the root fixed and pin hands/feet
    with IK inside `build`, so only the moving segments move. ~1.5 s per frame at 680×493.
+   For multi-step choreography use `animate.sequence(keyframes, build, path)`: keyframes are
+   `(time_s, params)` dicts of plain numbers, interpolated with smoothstep and fed to your
+   `build(params)`; see `examples/fun/karate.py` (punches, flying kick, bow) for a parametric
+   pose template and how airborne frames set the root height explicitly.
 
 ## Rules of thumb that cost time to learn
 
