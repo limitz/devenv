@@ -16,24 +16,44 @@ def seated_base(hip_flex=90):
     return {'thighL': [flex(hip_flex)], 'thighR': [flex(hip_flex)]}
 
 # ------------------------------------------------------------------ 1 cat-cow
+CATCOW_BASE = {'root': [pitch(-90)], 'thighL': [flex(90)], 'thighR': [flex(90)],
+               'shinL': [kflex(90)], 'shinR': [kflex(90)]}           # shins flat on the mat
+CAT = np.array([-9.0, 20.0, 32.0]); COW = np.array([8.0, -17.0, -32.0])   # lumbar, thorax, neck (tflex deg)
+
+def _toe_bottom(F, s):
+    R, pw = F.T['foot' + s]
+    return (pw + R @ np.array([FOOT_TOE, FOOT_DROP, 0]))[1] - FOOT_R
+
+def catcow_figure(ang, root_y, targets=None):
+    """Quadruped with the spine at angles `ang`; hands pinned flat to `targets`; feet plantarflexed so the
+    top of each foot rests on the mat (toes pointing back, sole up)."""
+    pose = dict(CATCOW_BASE, lumbar=[tflex(ang[0])], thorax=[tflex(ang[1])], neck=[tflex(ang[2])])
+    F = Figure(pose, root_pos=(0, root_y, 0))
+    if targets is None:
+        targets = {s: np.array([F.J('shoulder' + s)[0] + 0.02, HAND_R - 0.004, F.J('shoulder' + s)[2]]) for s in 'LR'}
+    for s in 'LR':
+        ik, phi_f = arm_ik(F, s, targets[s])
+        pose = dict(pose, **ik); pose['hand' + s] = [('z', 90 - phi_f)]
+        # lay the foot down: rotate it (toes pointing back, away from the knee) until the toe end touches the floor
+        def probe(a):
+            G = Figure(dict(pose, **{'foot' + s: [('z', a)]}), root_pos=(0, root_y, 0))
+            return _toe_bottom(G, s), G.J('toe' + s)[0] - G.J('ankle' + s)[0]
+        sign = 1 if probe(45)[1] < probe(-45)[1] else -1
+        lo, hi = 0.0, 90.0                      # toe bottom rises with |angle| on this branch
+        for _ in range(40):
+            mid = (lo + hi) / 2
+            if probe(sign * mid)[0] < 0: lo = mid
+            else: hi = mid
+        pose['foot' + s] = [('z', sign * (lo + hi) / 2)]
+    return Figure(pose, root_pos=(0, root_y, 0))
+
+def catcow_root_y():
+    """root height with the knees (sphere r 0.062) on the floor: thighs vertical below the hips"""
+    return THIGH + 0.062
+
 def cat_cow():
-    base = {'root': [pitch(-90)], 'thighL': [flex(90)], 'thighR': [flex(90)],
-            'shinL': [kflex(90)], 'shinR': [kflex(90)], 'footL': [kflex(-35)], 'footR': [kflex(-35)]}
-    cat = dict(base, lumbar=[tflex(-9)], thorax=[tflex(20)], neck=[tflex(32)])
-    cow = dict(base, lumbar=[tflex(8)], thorax=[tflex(-17)], neck=[tflex(-32)])
-    neutral = dict(base)
-    Fn = Figure(neutral, root_pos=(0, 0.55, 0))
-    # hands flat under the (neutral) shoulders, wrist 4 cm above floor
-    targets = {s: np.array([Fn.J('shoulder' + s)[0] + 0.02, 0.045, Fn.J('shoulder' + s)[2]]) for s in 'LR'}
-    def build(pose):
-        F = Figure(pose, root_pos=(0, 0.55, 0))
-        for s in 'LR':
-            ik, phi_f = arm_ik(F, s, targets[s])
-            pose = dict(pose, **ik)
-            pose['hand' + s] = [('z', 90 - phi_f)]
-        return Figure(pose, root_pos=(0, 0.55, 0))
-    Fc = build(cat); Fw = build(cow)
-    dy = -Fc.lowest(); Fc.root_pos[1] += dy; Fc.fk(); Fw.root_pos[1] += dy; Fw.fk()
+    ry = catcow_root_y()
+    Fc = catcow_figure(CAT, ry); Fw = catcow_figure(COW, ry)
     mb = Fc.J('midback')
     arrows = [A(off(mb, 0.02, 0.10, 0.22), off(mb, 0.02, 0.30, 0.22), style='<->')]
     return dict(figures=[Fc], ghosts=[Fw], props=[], cam='side', arrows=arrows, label=None)
@@ -85,7 +105,7 @@ def deep_squat():
 # ------------------------------------------------------------------ 5 leg swings
 def leg_swings():
     base = {'uarmL': [abd('L', 14)], 'uarmR': [abd('R', 58)], 'farmR': [eflex(8)],
-            'footL': [kflex(-20)], 'thighR': [flex(0)]}
+            'footL': [kflex(30)], 'thighR': [flex(0)]}                       # swinging foot slightly pointed
     fwd = dict(base, thighL=[flex(48)])
     back = dict(base, thighL=[flex(-24)])
     F = Figure(fwd, ground=False); G = Figure(back)
@@ -94,8 +114,8 @@ def leg_swings():
     y = hr[1]; z = hr[2] - 0.02
     props = [rod((-0.45, y, z), (0.55, y, z), 0.018, fit=False),
              rod((-0.35, 0, z), (-0.35, y, z), 0.02, fit=False), rod((0.45, 0, z), (0.45, y, z), 0.02, fit=False)]
-    a0 = off(G.J('ankleL'), -0.06, -0.02, 0.12); a1 = off(F.J('ankleL'), 0.02, -0.06, 0.12)
-    arrows = [A(a0, a1, rad=-0.32, style='<->')]
+    a0 = off(G.J('toeL'), -0.04, -0.04, 0.12); a1 = off(F.J('toeL'), 0.02, -0.06, 0.12)
+    arrows = [A(a0, a1, rad=0.30, style='<->')]      # arc sags toward the floor: the foot swings around the hip
     return dict(figures=[F], ghosts=[G], props=props, cam='side', arrows=arrows, label=None)
 
 # ------------------------------------------------------------------ 6 ankle circles + calf raises
@@ -149,7 +169,7 @@ def copenhagen(eccentric=False):
         return Figure(pose, root_pos=(0, hip_y, 0), near='R')
     def foot_low(F):
         R, pw = F.T['footL']
-        return min(pw[1] - 0.045, (pw + R @ np.array([0.15, -0.045, 0]))[1] - 0.035, (pw + R @ np.array([-0.04, -0.045, 0]))[1] - 0.035)
+        return min(pw[1] - 0.045, (pw + R @ np.array([FOOT_TOE, FOOT_DROP, 0]))[1] - FOOT_R, (pw + R @ np.array([FOOT_HEEL, FOOT_DROP, 0]))[1] - FOOT_R)
     def solve(fn, lo, hi, target, key):
         for _ in range(40):
             mid = (lo + hi) / 2
@@ -178,7 +198,7 @@ def copenhagen(eccentric=False):
 
 # ------------------------------------------------------------------ 11 wall psoas
 def wall_psoas():
-    pose = {'thighL': [flex(100)], 'shinL': [kflex(100)], 'footL': [kflex(-10)],
+    pose = {'thighL': [flex(100)], 'shinL': [kflex(108)], 'footL': [kflex(70)],   # shin hangs slightly back, foot points down
             'uarmL': [flex(52)], 'uarmR': [flex(52)], 'farmL': [eflex(50)], 'farmR': [eflex(50)],
             'handL': [eflex(78)], 'handR': [eflex(78)], 'thighR': [flex(0)]}
     F = Figure(pose); F.ground()

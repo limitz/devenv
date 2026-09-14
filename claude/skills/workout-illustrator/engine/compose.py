@@ -37,12 +37,19 @@ def compose(scene, path, W=W, H=H):
                      ghost_figures=scene.get('ghosts', ()), fit_pts=fit_pts, mat=scene.get('mat', True))
     fig = plt.figure(figsize=(W / DPI, H / DPI), dpi=DPI)
     ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, W); ax.set_ylim(H, 0); ax.axis('off')
+    base = np.array(R.img)
+    ax.imshow(base, extent=[0, W, H, 0], zorder=2, interpolation='lanczos')
     if scene.get('ghosts'):
+        # ghost sits above the mat and props (zorder 3) but under the main figures, which are
+        # re-drawn on top (zorder 4) through their own silhouette mask
         m = R.silhouette_of(scene['ghosts']).astype(float)
         fill = np.zeros((H, W, 4)); fill[..., :3] = MUTED; fill[..., 3] = 0.10 * m
-        ax.imshow(fill, extent=[0, W, H, 0], zorder=1, interpolation='bilinear')
-        ax.contour(m, levels=[0.5], colors=[hexc(MUTED)], linestyles='dashed', linewidths=1.5, zorder=1.5)
-    ax.imshow(np.array(R.img), extent=[0, W, H, 0], zorder=2, interpolation='lanczos')
+        ax.imshow(fill, extent=[0, W, H, 0], zorder=3, interpolation='bilinear')
+        ax.contour(m, levels=[0.5], colors=[hexc(MUTED)], linestyles='dashed', linewidths=1.5, zorder=3.5)
+        from scipy.ndimage import binary_dilation
+        fm = binary_dilation(R.silhouette_of(scene['figures']), iterations=5)
+        top = base.copy(); top[..., 3] = (top[..., 3] * fm).astype(np.uint8)
+        ax.imshow(top, extent=[0, W, H, 0], zorder=4, interpolation='lanczos')
     for a in scene.get('arrows', []):
         s = a.get('size', 1.0); lw = 3.0 * s
         if a['kind'] == 'circ':

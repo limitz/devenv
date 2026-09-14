@@ -12,7 +12,7 @@ nothing to credit or license.
 
 Engine lives next to this file: `engine/mannequin.py` (skeleton, FK, IK, renderer),
 `engine/poselib.py` (26 ready scenes + helpers), `engine/compose.py` (figures + contact sheet),
-`engine/build_pdf.py` (layout). Worked example: `examples/hip-groin-flexibility/`.
+`engine/build_pdf.py` (layout), `engine/animate.py` (GIF/MP4 loops). Worked example: `examples/hip-groin-flexibility/`.
 
 Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftoppm` for checking pages.
 
@@ -36,6 +36,10 @@ Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftopp
    one page (rows are `KeepTogether`; if a section spills, shorten cues or drop the image cap to
    35 mm in `build_pdf.py`). `credits.json` is written next to the PDF.
 5. Deliver the PDF (SendUserFile) and say which poses were reused vs new.
+6. **Animation on request**: `engine/animate.py` tweens a `build(s)` function between two poses
+   (cosine ping-pong loop, fixed framing) into a GIF plus MP4; see
+   `examples/hip-groin-flexibility/animate_catcow.py`. Keep the root fixed and pin hands/feet
+   with IK inside `build`, so only the moving segments move. ~1.5 s per frame at 680×493.
 
 ## Rules of thumb that cost time to learn
 

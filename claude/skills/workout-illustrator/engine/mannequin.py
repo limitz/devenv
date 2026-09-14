@@ -47,7 +47,10 @@ def pitch(d): return ('z', d)
 def roll(d): return ('x', d)
 
 # ---------------------------------------------------------------- skeleton
-UARM, FARM, HAND = 0.29, 0.26, 0.16
+UARM, FARM, HAND = 0.29, 0.26, 0.09   # HAND = palm length (wrist to finger-end centre)
+HAND_R = 0.036                          # palm half-thickness; the palm is two side-by-side capsules (wider than the forearm, flatter)
+FOOT_R, FOOT_HALF_W = 0.031, 0.021      # foot: two side-by-side capsules too, 25 cm long, 10 cm wide, 6 cm thick
+FOOT_HEEL, FOOT_TOE, FOOT_DROP = -0.04, 0.16, -0.045   # capsule ends along the foot (x) and drop below the ankle (y)
 THIGH, SHIN = 0.43, 0.42
 BONES = {
     'root':   (None, (0, 0, 0)),
@@ -91,7 +94,8 @@ def bone_prims(name):
         P.append(('cap', (0, 0, 0), (0, -FARM, 0), 0.04, g))
     elif name.startswith('hand'):
         g = 'arm' + name[-1]
-        P.append(('cap', (0, 0, 0), (0, -HAND, 0), 0.035, g))
+        for z in (-0.022, 0.022):
+            P.append(('cap', (0, 0, z), (0, -HAND, z), HAND_R, g))
     elif name.startswith('thigh'):
         g = 'leg' + name[-1]
         P.append(('cap', (0, 0, 0), (0, -THIGH, 0), 0.075, g))
@@ -102,7 +106,8 @@ def bone_prims(name):
     elif name.startswith('foot'):
         g = 'leg' + name[-1]
         P.append(('sph', (0, 0, 0), 0.045, g))
-        P.append(('cap', (-0.04, -0.045, 0), (0.15, -0.045, 0), 0.035, g))
+        for z in (-FOOT_HALF_W, FOOT_HALF_W):
+            P.append(('cap', (FOOT_HEEL, FOOT_DROP, z), (FOOT_TOE, FOOT_DROP, z), FOOT_R, g))
     return P
 
 class Figure:
@@ -163,9 +168,9 @@ class Figure:
         if name == 'headtop':
             R, p = self.T['head']; return p + R @ np.array([0, 0.205, 0])
         if name in ('toeL', 'toeR'):
-            R, p = self.T['foot' + name[-1]]; return p + R @ np.array([0.15, -0.045, 0])
+            R, p = self.T['foot' + name[-1]]; return p + R @ np.array([FOOT_TOE, FOOT_DROP, 0])
         if name in ('heelL', 'heelR'):
-            R, p = self.T['foot' + name[-1]]; return p + R @ np.array([-0.04, -0.045, 0])
+            R, p = self.T['foot' + name[-1]]; return p + R @ np.array([FOOT_HEEL, FOOT_DROP, 0])
         if name in ('fingerL', 'fingerR'):
             R, p = self.T['hand' + name[-1]]; return p + R @ np.array([0, -HAND, 0])
         if name in ('midthighL', 'midthighR'):
