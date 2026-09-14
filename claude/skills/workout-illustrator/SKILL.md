@@ -46,8 +46,10 @@ Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftopp
    Keyframes take an optional ease ('smooth', 'linear', 'in', 'out') for the segment they start.
    See `examples/fun/karate.py` (punches, flying kick, bow; airborne frames set the root height
    explicitly) and `examples/fun/ballet.py` (fifth, pas de bourrée, pirouette with linear spin,
-   révérence; turnout via `trotX`, demi-pointe via `footX`, fixed `near='L'` so shading does not
-   flip while turning).
+   révérence; turnout via `trotX`, demi-pointe via `footX`) and `examples/fun/lyrical.py` (hip sways,
+   body wave, spiral to the floor, side-sit, lie-back, roll, rise: lateral bends via `lumbarside` /
+   `thoraxside` / `neckside`, twists via `lumbartwist` / `thoraxtwist`; floor transitions just interpolate
+   `pitch`/`yaw` with `ground()` every frame).
 
 ## Rules of thumb that cost time to learn
 

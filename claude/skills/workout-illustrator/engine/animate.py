@@ -35,14 +35,17 @@ def tween_loop(build, path, N=36, fps=12, cam='side', W=680, H=493, props=(), pi
 # ---------------------------------------------------------------- parametric pose template
 def param_pose(p):
     """Pose dict from a flat dict of numbers (missing keys = 0). Keys:
-    yaw pitch roll (root) · lumbar thorax neck neckyaw (forward bend deg, head turn) ·
+    yaw pitch roll (root; for a lying body yaw rolls it about its long axis) ·
+    lumbar thorax neck (forward bend), lumbarside thoraxside neckside (lateral bend, + = to the left),
+    lumbartwist thoraxtwist neckyaw (twist) ·
     per side X in L/R: uflexX uabdX urotX elbowX handX (arm) · tflexX tabdX trotX kneeX footX (leg;
     trotX = external rotation, footX = plantarflexion, negative = toes up)."""
     g = lambda k: p.get(k, 0.0)
     sgn = {'L': 1, 'R': -1}
     pose = {'root': [('y', g('yaw')), ('x', g('roll')), ('z', g('pitch'))],
-            'lumbar': [('z', -g('lumbar'))], 'thorax': [('z', -g('thorax'))],
-            'neck': [('y', g('neckyaw')), ('z', -g('neck'))]}
+            'lumbar': [('y', g('lumbartwist')), ('x', g('lumbarside')), ('z', -g('lumbar'))],
+            'thorax': [('y', g('thoraxtwist')), ('x', g('thoraxside')), ('z', -g('thorax'))],
+            'neck': [('y', g('neckyaw')), ('x', g('neckside')), ('z', -g('neck'))]}
     for s_ in 'LR':
         pose['uarm' + s_] = [('y', -sgn[s_] * g('urot' + s_)), ('x', -sgn[s_] * g('uabd' + s_)), ('z', g('uflex' + s_))]
         pose['farm' + s_] = [('z', g('elbow' + s_))]
