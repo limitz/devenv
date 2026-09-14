@@ -1,0 +1,7 @@
+#!/bin/bash
+# Link every skill in claude/skills into ~/.claude/skills (Claude Code picks them up from there).
+mkdir -p ~/.claude/skills
+for d in "$(cd "$(dirname "$0")" && pwd)"/skills/*/; do
+    ln -sfn "${d%/}" ~/.claude/skills/"$(basename "$d")"
+done
+ls -la ~/.claude/skills
