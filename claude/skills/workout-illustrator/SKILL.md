@@ -33,8 +33,8 @@ Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftopp
 4. **Build the PDF**:
    `python3 engine/build_pdf.py --content content.py --figures figures --out routine.pdf`
    then `pdftoppm -r 60 -png routine.pdf pages/p` and look at the pages. Each section must fit
-   one page (rows are `KeepTogether`; if a section spills, shorten cues or drop the image cap to
-   35 mm in `build_pdf.py`). `credits.json` is written next to the PDF.
+   one page (rows are `KeepTogether`; if a section spills, shorten cues or set `FIG_H_MM = 35` in
+   `content.py`). `credits.json` is written next to the PDF.
 5. Deliver the PDF (SendUserFile) and say which poses were reused vs new.
 6. **Animation on request**: `engine/animate.py` tweens a `build(s)` function between two poses
    (cosine ping-pong loop, fixed framing) into a GIF plus MP4; see

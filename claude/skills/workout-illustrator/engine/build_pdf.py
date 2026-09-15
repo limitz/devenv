@@ -5,7 +5,7 @@ usage: build_pdf.py --content CONTENT.py --figures FIG_DIR --out routine.pdf
 
 CONTENT.py schema: see references/layout.md (TITLE, RUNNING_HEADER, SUMMARY, CONSTRAINTS, SESSION_MAP,
 STOP_RULES, STOP_NOTE, SECTIONS, FREQUENCY, ADDING_LOAD, LOAD_STEPS, GOOD_SESSION, CLOSING, CREDITS,
-CREDITS_JSON_NOTE). Optional blocks may be omitted (set to None / empty).
+CREDITS_JSON_NOTE, APPENDIX_NOTE, APPENDICES). Optional blocks may be omitted (set to None / empty).
 """
 import os, re, json, sys, argparse, importlib.util
 from reportlab.lib.pagesizes import A4
@@ -139,6 +139,10 @@ def make_on_page(header):
 
 def build(C, fig_dir, out):
     g = lambda k, d=None: getattr(C, k, d)
+    global IMG_W, IMG_H
+    if g('FIG_H_MM'):                      # optional per-routine figure cap (e.g. 35) when a six-row section spills
+        IMG_H = float(C.FIG_H_MM) * mm
+        IMG_W = IMG_H * 50 / 36
     doc = SimpleDocTemplate(out, pagesize=A4, leftMargin=MARGIN, rightMargin=MARGIN,
                             topMargin=MARGIN + 3 * mm, bottomMargin=MARGIN,
                             title=re.sub('<[^>]+>|&amp;', lambda m: '&' if m.group(0) == '&amp;' else '', C.TITLE),
@@ -149,18 +153,22 @@ def build(C, fig_dir, out):
         st += [Paragraph(g('CONSTRAINTS_TITLE', 'Working constraints'), S['h2']), kv_table(C.CONSTRAINTS)]
     if g('SESSION_MAP'):
         st += [Paragraph('Session map', S['h2']), session_map_table(C.SESSION_MAP)]
+    if g('APPENDIX_NOTE'):
+        st += [Spacer(1, 2 * mm), Paragraph(md(C.APPENDIX_NOTE), S['muted'])]
     if g('STOP_RULES'):
         st += [Paragraph('Stop rules', S['h2']), Paragraph(md(C.STOP_RULES), S['stop'])]
     if g('STOP_NOTE'):
         st += [Spacer(1, 3 * mm), Paragraph(md(C.STOP_NOTE), S['muted'])]
-    for sec in C.SECTIONS:
+    def section_page(sec):
         st.append(PageBreak())
         st.append(section_header(sec['num'], sec['title'], sec.get('duration', ''), sec.get('subtitle', '')))
         st.append(Spacer(1, 1.5 * mm))
         if sec.get('intro'):
-            st += [Paragraph(md(sec['intro']), S['muted']), Spacer(1, 1.5 * mm)]
+            st.extend([Paragraph(md(sec['intro']), S['muted']), Spacer(1, 1.5 * mm)])
         for ex in sec['exercises']:
             st.append(exercise_row(ex, fig_dir))
+    for sec in C.SECTIONS:
+        section_page(sec)
     tail = any(g(k) for k in ('FREQUENCY', 'ADDING_LOAD', 'LOAD_STEPS', 'GOOD_SESSION', 'CLOSING', 'CREDITS'))
     if tail:
         st.append(PageBreak())
@@ -182,6 +190,8 @@ def build(C, fig_dir, out):
             st += [Spacer(1, 4 * mm), Paragraph(md(C.CLOSING), S['stop'])]
         if g('CREDITS'):
             st += [Spacer(1, 10 * mm), hr(), Paragraph('Image credits', S['h2']), Paragraph(md(C.CREDITS), S['small'])]
+    for app in (g('APPENDICES') or []):        # optional add-on blocks after the progression page; num is a letter
+        section_page(app)
     doc.build(st, onFirstPage=make_on_page(C.RUNNING_HEADER), onLaterPages=make_on_page(C.RUNNING_HEADER))
     cj = os.path.join(os.path.dirname(os.path.abspath(out)), 'credits.json')
     json.dump({'third_party_images': list(g('THIRD_PARTY_IMAGES', []) or []), 'note': g('CREDITS_JSON_NOTE', '')},
