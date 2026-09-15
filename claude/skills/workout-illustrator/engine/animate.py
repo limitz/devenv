@@ -8,7 +8,7 @@ so build(0) is the start position and build(1) the end position. Framing is fixe
 extremes so the figure does not jump between frames. Keep the root fixed inside build() and use
 arm_ik / leg_ik to pin hands and feet, exactly as for a still.
 """
-import os, subprocess, shutil
+import os, io, subprocess, shutil
 import numpy as np
 from PIL import Image
 from mannequin import render_scene
@@ -22,15 +22,43 @@ def tween_loop(build, path, N=36, fps=12, cam='side', W=680, H=493, props=(), pi
         R = render_scene([build(s)], props, cam=cam, W=W, H=H, ghost_figures=ext, tint=tint)
         im = Image.new('RGBA', R.img.size, (255, 255, 255, 255)); im.alpha_composite(R.img)
         frames.append(im.convert('P', palette=Image.ADAPTIVE, colors=colors))
-    frames[0].save(path, save_all=True, append_images=frames[1:], duration=1000 // fps, loop=0, optimize=True)
-    mp4 = os.path.splitext(path)[0] + '.mp4'
-    if shutil.which('ffmpeg'):
-        for enc in (['-c:v', 'libx264', '-crf', '20'], ['-c:v', 'libopenh264', '-b:v', '1500k'], ['-c:v', 'mpeg4', '-q:v', '3']):
-            r = subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', path, '-vf',
-                                f'fps={2 * fps},scale={W}:-2:flags=lanczos,format=yuv420p', *enc, '-movflags', '+faststart', mp4], stderr=subprocess.DEVNULL)
-            if r.returncode == 0:
-                break
+    frames[0].save(path, save_all=True, append_images=frames[1:], duration=gif_durations(len(frames), fps), loop=0, optimize=True)
+    write_mp4(os.path.splitext(path)[0] + '.mp4', [_png(f) for f in frames], fps)
     return path
+
+
+# ---------------------------------------------------------------- encoders
+H264_ENCODERS = (['-c:v', 'libx264', '-crf', '20', '-preset', 'slow'],
+                 ['-c:v', 'h264_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '23', '-b:v', '0'],
+                 ['-c:v', 'libopenh264', '-b:v', '1500k'],
+                 ['-c:v', 'h264_v4l2m2m', '-b:v', '1500k'],
+                 ['-c:v', 'mpeg4', '-q:v', '3'])
+
+def write_mp4(path, png_frames, fps):
+    """H.264 MP4 (yuv420p, faststart) from a list of PNG-encoded frames at exactly fps; first encoder
+    that works wins (libx264, NVENC, openh264, v4l2, then plain mpeg4 as a last resort). Returns the
+    encoder name or None when ffmpeg is missing."""
+    if not shutil.which('ffmpeg'):
+        return None
+    data = b''.join(png_frames)
+    for enc in H264_ENCODERS:
+        r = subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', str(fps), '-i', '-',
+                            '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p', *enc, '-movflags', '+faststart', path],
+                           input=data, stderr=subprocess.DEVNULL)
+        if r.returncode == 0:
+            return enc[1]
+    return None
+
+def gif_durations(n, fps):
+    """per-frame GIF durations (ms) on the 10 ms grid whose running total tracks n/fps exactly"""
+    out, acc = [], 0.0
+    for i in range(1, n + 1):
+        d = int(round(i * 1000 / fps / 10)) * 10 - int(round(acc))
+        out.append(max(10, d)); acc += out[-1]
+    return out
+
+def _png(im):
+    buf = io.BytesIO(); im.convert('RGB').save(buf, 'PNG'); return buf.getvalue()
 
 # ---------------------------------------------------------------- parametric pose template
 def param_pose(p):
@@ -108,8 +136,18 @@ def _hermite(t, v, m, j, x):
     h00 = 2 * u**3 - 3 * u**2 + 1; h10 = u**3 - 2 * u**2 + u; h01 = -2 * u**3 + 3 * u**2; h11 = u**3 - u**2
     return h00 * v[j] + h10 * h * m[j] + h01 * v[j + 1] + h11 * h * m[j + 1]
 
+_JOB = None   # frame job shared with forked render workers (set by sequence)
+
+def _render_frame(i):
+    J = _JOB; F = J['figs'][i]
+    R = render_scene([F], J['props'], cam=J['cam'], W=J['W'], H=J['H'], ghost_figures=J['fit_figs'], mat=J['mat'], tint=J['tint'])
+    im = Image.new('RGBA', R.img.size, (255, 255, 255, 255)); im.alpha_composite(R.img)
+    if J['caps'][i]:
+        _caption(im, J['caps'][i], J['W'])
+    buf = io.BytesIO(); im.convert('RGB').save(buf, 'PNG'); return buf.getvalue()
+
 def sequence(keyframes, build, path, fps=12, cam='side', W=680, H=493, props=(), mat=None, colors=128, hold_last=0.0,
-             tint='continuous', flow=True, smooth_ground=True):
+             tint='continuous', flow=True, smooth_ground=True, workers=1):
     """keyframes: list of (time_s, params_dict[, ease]). build(params) -> Figure.
     flow=True (default): every numeric param follows a monotone cubic spline through all keyframes, so
       motion flows through a keyframe instead of stopping at it (holds stay flat, no overshoot).
@@ -121,7 +159,9 @@ def sequence(keyframes, build, path, fps=12, cam='side', W=680, H=493, props=(),
       height is max(envelope, interpolated rooty). Big sweeps through the floor still need a better
       intermediate keyframe: check the printed spikes.
     A keyframe params dict may carry 'label': text shown at the top of the frames from that keyframe on.
-    Framing is fixed from all keyframe figures. Writes a GIF (+ MP4 when ffmpeg can encode)."""
+    Framing is fixed from all keyframe figures. Writes a GIF (+ MP4 when ffmpeg can encode).
+    workers > 1 renders the frames in parallel processes (fork); frames are independent, so this is a
+    near-linear speed-up on a multi-core box."""
     keyframes = [(kf[0], dict(kf[1]), kf[2] if len(kf) > 2 else 'smooth') for kf in keyframes]
     labels = [p.pop('label', None) for _, p, _ in keyframes]
     keys = sorted(set(k for _, p, _ in keyframes for k in p))
@@ -156,25 +196,24 @@ def sequence(keyframes, build, path, fps=12, cam='side', W=680, H=493, props=(),
     else:
         env = g
     rooty = np.maximum(env, np.array(air))
-    # pass 2: render
-    frames = []
+    # pass 2: render (frames are independent -> optional process pool)
+    global _JOB
+    caps = []
     for i in range(n):
         t = min(i / fps, times[-1])
-        F = figs[i]
-        F.root_pos[1] = rooty[i]; F.fk()
-        R = render_scene([F], props, cam=cam, W=W, H=H, ghost_figures=fit_figs, mat=mat is None, tint=tint)
-        im = Image.new('RGBA', R.img.size, (255, 255, 255, 255)); im.alpha_composite(R.img)
+        figs[i].root_pos[1] = rooty[i]; figs[i].fk()
         cur = [l for l, tk in zip(labels, times) if l and tk <= t + 1e-9]
-        if cur:
-            _caption(im, cur[-1], W)
-        frames.append(im.convert('P', palette=Image.ADAPTIVE, colors=colors))
-    frames[0].save(path, save_all=True, append_images=frames[1:], duration=1000 // fps, loop=0, optimize=True)
-    mp4 = os.path.splitext(path)[0] + '.mp4'
-    if shutil.which('ffmpeg'):
-        for enc in (['-c:v', 'libx264', '-crf', '20'], ['-c:v', 'libopenh264', '-b:v', '1500k'], ['-c:v', 'mpeg4', '-q:v', '3']):
-            r = subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', path, '-vf',
-                                f'fps={2 * fps},scale={W}:-2:flags=lanczos,format=yuv420p', *enc, '-movflags', '+faststart', mp4],
-                               stderr=subprocess.DEVNULL)
-            if r.returncode == 0:
-                break
+        caps.append(cur[-1] if cur else None)
+    _JOB = dict(figs=figs, props=props, cam=cam, W=W, H=H, fit_figs=fit_figs, mat=mat is None, tint=tint, caps=caps)
+    if workers and workers > 1:
+        import multiprocessing as mp
+        with mp.get_context('fork').Pool(workers) as pool:
+            raw = pool.map(_render_frame, range(n), chunksize=1)
+    else:
+        raw = [_render_frame(i) for i in range(n)]
+    _JOB = None
+    frames = [Image.open(io.BytesIO(b)).convert('P', palette=Image.ADAPTIVE, colors=colors) for b in raw]
+    frames[0].save(path, save_all=True, append_images=frames[1:], duration=gif_durations(len(frames), fps), loop=0, optimize=True)
+    enc = write_mp4(os.path.splitext(path)[0] + '.mp4', raw, fps)
+    print(f'{len(frames)} frames at {fps} fps ({len(frames) / fps:.1f} s); mp4 encoder: {enc}')
     return path

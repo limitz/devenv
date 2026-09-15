@@ -43,6 +43,9 @@ Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftopp
    For multi-step choreography use `animate.sequence(keyframes, build, path)`: keyframes are
    `(time_s, params)` dicts of plain numbers, interpolated with smoothstep and fed to your
    `build(params)`; `animate.param_pose(params)` turns a flat dict of joint numbers into a pose.
+   Pass `workers=N` to render the frames on N processes (a 400-frame routine takes ~70 s on 18 cores instead of
+   ~13 min). The MP4 is H.264 encoded straight from the frames at the true fps (libx264, else NVENC, else
+   openh264/v4l2, mpeg4 as last resort); the GIF gets 10 ms-grid frame durations that keep the same clock.
    By default every param follows a monotone cubic spline through all keyframes (motion flows through a
    keyframe instead of stopping at it; holds stay flat), and the root height is a smooth envelope of the
    per-frame grounded height, so a limb dipping below the floor between keyframes lifts the body gently
@@ -57,6 +60,10 @@ Requirements: python3 with numpy, scipy, matplotlib, Pillow, reportlab; `pdftopp
    body wave, spiral to the floor, side-sit, lie-back, roll, rise: lateral bends via `lumbarside` /
    `thoraxside` / `neckside`, twists via `lumbartwist` / `thoraxtwist`; floor transitions just interpolate
    `pitch`/`yaw` with `ground()` every frame).
+   `examples/fun/speaker_dance.py` chains ballet, a feminine phrase, a twerk with the back to the audience (root
+   `pitch`/`roll` act about world axes after `yaw`, so the demo adds body-frame `bpitch`/`broll` innermost in its
+   `build`), then a walk-up front kick onto a prop with a solved reach, airborne hops via `rooty`, and a limp off.
+   It has `--check` (floor-sweep trace) and `--sheet` (keyframe contact sheet) modes to look before rendering.
 
 ## Rules of thumb that cost time to learn
 
