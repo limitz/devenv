@@ -5,7 +5,7 @@ Stack: reportlab platypus, A4, 16 mm margins, Helvetica throughout (DejaVu Sans 
 band `#f2f6f7`.
 
 Pages: 1 cover · one page per section · "Progression & scheduling" page with an image credits
-block at the bottom · one page per appendix (optional add-on blocks, lettered). Running header on pages 2+ (title left, page number right, hairline).
+block at the bottom · optional "On hold" page (deferred loads and their unlock conditions) · one page per appendix (optional add-on blocks, lettered). Running header on pages 2+ (title left, page number right, hairline).
 
 Exercise row: figure in a 53 mm column (image 50×36 mm), text right: bold name with accent
 number, accent dose line, cues at 9.1 pt, optional flag line (▲, italic muted). Hairline below.
@@ -31,6 +31,8 @@ ADDING_LOAD = '...'; LOAD_STEPS = ['Short lever → Long lever', ...]   # option
 GOOD_SESSION = '...'; CLOSING = '...'                              # optional
 CREDITS = 'All figures rendered for this document ...'            # optional block text
 CREDITS_JSON_NOTE = '...'; THIRD_PARTY_IMAGES = []                # written to credits.json
+HOLD_TITLE = 'On hold — the no-go list'; HOLD_INTRO = '...'      # optional page after progression: kv rows of
+HOLD_LIST = [('Nordic curl', 'why it is held and what unlocks it'), ...]   #   deferred loads, so nothing is forgotten
 APPENDIX_NOTE = 'Appendices are optional add-on blocks ...'       # optional, muted line under the session map
 APPENDICES = [dict(num='A', title='Appendix — shoulder flexion', duration='12 min', subtitle='...', intro='...',
                    exercises=[(33, ...), ...])]                     # same schema as SECTIONS; one page each,

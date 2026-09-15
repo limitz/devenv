@@ -5,7 +5,7 @@ usage: build_pdf.py --content CONTENT.py --figures FIG_DIR --out routine.pdf
 
 CONTENT.py schema: see references/layout.md (TITLE, RUNNING_HEADER, SUMMARY, CONSTRAINTS, SESSION_MAP,
 STOP_RULES, STOP_NOTE, SECTIONS, FREQUENCY, ADDING_LOAD, LOAD_STEPS, GOOD_SESSION, CLOSING, CREDITS,
-CREDITS_JSON_NOTE, APPENDIX_NOTE, APPENDICES). Optional blocks may be omitted (set to None / empty).
+CREDITS_JSON_NOTE, HOLD_TITLE, HOLD_INTRO, HOLD_LIST, APPENDIX_NOTE, APPENDICES). Optional blocks may be omitted (set to None / empty).
 """
 import os, re, json, sys, argparse, importlib.util
 from reportlab.lib.pagesizes import A4
@@ -190,6 +190,13 @@ def build(C, fig_dir, out):
             st += [Spacer(1, 4 * mm), Paragraph(md(C.CLOSING), S['stop'])]
         if g('CREDITS'):
             st += [Spacer(1, 10 * mm), hr(), Paragraph('Image credits', S['h2']), Paragraph(md(C.CREDITS), S['small'])]
+    if g('HOLD_LIST'):                          # explicit no-go list: what is deliberately left out and what unlocks it
+        st.append(PageBreak())
+        st.append(Paragraph(g('HOLD_TITLE', 'On hold'), S['sectitle']))
+        st.append(Spacer(1, 2 * mm))
+        if g('HOLD_INTRO'):
+            st += [Paragraph(md(C.HOLD_INTRO), S['muted']), Spacer(1, 3 * mm)]
+        st.append(kv_table(C.HOLD_LIST, label_w=46 * mm))
     for app in (g('APPENDICES') or []):        # optional add-on blocks after the progression page; num is a letter
         section_page(app)
     doc.build(st, onFirstPage=make_on_page(C.RUNNING_HEADER), onLaterPages=make_on_page(C.RUNNING_HEADER))
